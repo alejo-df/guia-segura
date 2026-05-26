@@ -1,42 +1,37 @@
 {% extends "users/base.html" %}
-{% block title %}Profile Page{% endblock title %}
+{% block title %}Perfil | GuiaSegura{% endblock title %}
 {% block content %}
-<div class="container mt-4">
-    <div class="row justify-content-center"> 
-        <div class="col-md-8"> 
+<div class="container my-4 my-lg-5">
+    <div class="page-hero">
+        <h1 class="fw-bold mb-2"><i class="fas fa-user-circle me-2"></i>Perfil de {{ user.username }}</h1>
+        <p>Consulta tus guías, genera tus reportes y actualiza la información básica de tu cuenta.</p>
+    </div>
 
-            <div class="row my-3 p-3 text-center"> 
-                <img class="rounded-circle account-img mx-auto" 
-                    src="{{ user.perfil.avatar.url }}" 
-                    style="width: 150px; height: 150px; object-fit: cover; cursor: pointer;"
-                    alt="Avatar del usuario"/>
-            </div>
-            
-            <div class="row my-3 p-3 text-center">
-                <a href="{% url 'track-guide' %}" class="btn btn-success btn-lg w-75 mx-auto shadow-sm">
-                    <i class="fas fa-search"></i> Consultar Número de Guía
-                </a>
-            </div>
+    <div class="row g-4 justify-content-center">
+        <div class="col-lg-4">
+            <div class="profile-card p-4 text-center h-100">
+                <img class="rounded-circle profile-avatar mb-3"
+                     src="{{ user.perfil.avatar.url }}"
+                     alt="Avatar del usuario"/>
+                <h3 class="fw-bold mb-1">{{ user.username }}</h3>
+                <p class="text-muted mb-3">{{ user.email }}</p>
+                <div class="d-flex flex-wrap justify-content-center gap-2 mb-4">
+                    <span class="badge bg-secondary"><i class="fas fa-user"></i> Usuario</span>
+                    <span class="badge bg-primary"><i class="fas fa-check-circle"></i> Cuenta activa</span>
+                </div>
 
-            <!-- Botones de reportes del usuario -->
-            <div class="row my-2 px-3 g-2">
-                <div class="col-6">
-                    <a href="{% url 'mis_guias_excel' %}" class="btn btn-success w-100">
-                        <i class="fas fa-file-excel"></i> Mis guías en Excel
+                <div class="d-grid gap-3">
+                    <a href="{% url 'track-guide' %}" class="btn btn-success btn-lg">
+                        <i class="fas fa-search"></i> Consultar Número de Guía
                     </a>
-                </div>
-                <div class="col-6">
-                    <a href="{% url 'mis_guias_pdf' %}" class="btn btn-danger w-100">
-                        <i class="fas fa-file-pdf"></i> Mis guías en PDF
-                    </a>
-                </div>
-                <div class="col-12">
-                    <a href="{% url 'mis_notificaciones' %}" class="btn btn-info w-100 text-white">
+                    <a href="{% url 'mis_notificaciones' %}" class="btn btn-info text-white btn-lg">
                         <i class="fas fa-bell"></i> Mis Notificaciones
                     </a>
                 </div>
             </div>
+        </div>
 
+        <div class="col-lg-8">
             {% if user_form.errors %}
                 <div class="alert alert-danger alert-dismissible fade show" role="alert">
                     <div id="form_errors">
@@ -48,37 +43,66 @@
                 </div>
             {% endif %}
 
-            <div class="card p-4 shadow-sm bg-white border-0 mt-3">
-                <h3 class="card-title text-center fw-bold text-primary mb-3">{{ user.username | upper }}</h3>
+            <div class="profile-card p-4 p-lg-5">
+                <div class="d-flex flex-column flex-md-row justify-content-between gap-3 mb-4">
+                    <div>
+                        <h2 class="fw-bold mb-1">Panel del usuario</h2>
+                        <p class="text-muted mb-0">Accede a tus opciones principales y mantén tu perfil actualizado.</p>
+                    </div>
+                    <a href="{% url 'password_change' %}" class="btn btn-outline-primary align-self-md-start">
+                        <i class="fas fa-key"></i> Cambiar contraseña
+                    </a>
+                </div>
+
+                <h4 class="fw-bold mb-3"><i class="fas fa-compass me-2"></i>Accesos rápidos</h4>
+                <div class="action-grid mb-4">
+                    <a href="{% url 'track-guide' %}" class="btn btn-success action-tile">
+                        <i class="fas fa-search"></i> Consultar Guía
+                    </a>
+                    <a href="{% url 'mis_guias_excel' %}" class="btn btn-success action-tile">
+                        <i class="fas fa-file-excel"></i> Mis guías en Excel
+                    </a>
+                    <a href="{% url 'mis_guias_pdf' %}" class="btn btn-danger action-tile">
+                        <i class="fas fa-file-pdf"></i> Mis guías en PDF
+                    </a>
+                    <a href="{% url 'mis_notificaciones' %}" class="btn btn-info text-white action-tile">
+                        <i class="fas fa-bell"></i> Mis Notificaciones
+                    </a>
+                </div>
+
+                <hr class="my-4">
+
                 <form method="POST" enctype="multipart/form-data">
                     {% csrf_token %}
-                    <div class="border p-4 rounded bg-light">
-                        <div class="form-group mb-3">
-                            <label class="small mb-1">Username:</label>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="small mb-1" for="{{ user_form.username.id_for_label }}">Nombre de usuario</label>
                             {{ user_form.username }}
-                            <label class="small mb-1 mt-3">Email:</label>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="small mb-1" for="{{ user_form.email.id_for_label }}">Correo electrónico</label>
                             {{ user_form.email }}
                         </div>
-                        <div class="form-group mt-4">
-                            <a href="{% url 'password_change' %}">Change Password</a>
-                            <hr>
-                            <label class="small mb-1">Change Avatar:</label>
+                        <div class="col-12">
+                            <label class="small mb-1" for="{{ profile_form.avatar.id_for_label }}">Cambiar avatar</label>
                             {{ profile_form.avatar }}
                         </div>
-                        <label class="small mb-1 mt-3">Bio:</label> {{ profile_form.bio }}
+                        <div class="col-12">
+                            <label class="small mb-1" for="{{ profile_form.bio.id_for_label }}">Biografía</label>
+                            {{ profile_form.bio }}
+                        </div>
                     </div>
-                    <br>
-                    <div class="row justify-content-center mt-4">
-                        <div class="col-auto">
-                            <button type="submit" class="btn btn-dark btn-lg">Save Changes</button>
-                        </div>
-                        <div class="col-auto">
-                            <button type="reset" class="btn btn-dark btn-lg">Reset</button>
-                        </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-end mt-4">
+                        <button type="reset" class="btn btn-outline-dark btn-lg">
+                            <i class="fas fa-undo"></i> Restablecer
+                        </button>
+                        <button type="submit" class="btn btn-dark btn-lg">
+                            <i class="fas fa-save"></i> Guardar Cambios
+                        </button>
                     </div>
                 </form>
             </div>
-
         </div>
     </div>
 </div>
