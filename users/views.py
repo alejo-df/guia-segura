@@ -311,7 +311,7 @@ class VistaRegistro(View):
 def profile(request):
     if request.method == 'POST':
         user_form = FormularioActualizarUsuario(request.POST, instance=request.user)
-        profile_form = FormularioActualizarPerfil(request.POST, request.FILES, instance=request.user.perfil)
+        profile_form = FormularioActualizarPerfil(request.POST, instance=request.user.perfil)
         if user_form.is_valid() and profile_form.is_valid():
             user_form.save()
             profile_form.save()
