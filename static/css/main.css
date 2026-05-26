@@ -499,3 +499,27 @@ textarea:focus,
     border-color: #0f172a;
     color: #93c5fd;
 }
+
+
+/* Perfil compacto sin avatar grande */
+.profile-summary-card {
+    align-self: flex-start;
+}
+
+.profile-name-line {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .55rem;
+    margin-bottom: .35rem;
+}
+
+.profile-name-icon {
+    color: var(--app-primary);
+    font-size: 2rem;
+    line-height: 1;
+}
+
+[data-theme="dark"] .profile-name-icon {
+    color: #93c5fd;
+}
