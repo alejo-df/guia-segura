@@ -54,10 +54,15 @@ class FormularioAcceso(AuthenticationForm):
     username = forms.CharField(max_length=100, required=True, widget=forms.TextInput(attrs={
         'placeholder': 'Username', 'class': 'form-control'
     }))
+
     password = forms.CharField(max_length=50, required=True, widget=forms.PasswordInput(attrs={
-        'placeholder': 'Password', 'class': 'form-control', 'data-toggle': 'password',
-        'id': 'password', 'name': 'password'
+        'placeholder': 'Password',
+        'class': 'form-control',
+        'data-toggle': 'password',
+        'id': 'password',
+        'name': 'password'
     }))
+
     remember_me = forms.BooleanField(required=False)
 
     MAX_INTENTOS = 5
@@ -71,20 +76,30 @@ class FormularioAcceso(AuthenticationForm):
             intento, _ = IntentoLogin.objects.get_or_create(username=username)
 
             if intento.bloqueado_hasta and intento.bloqueado_hasta > timezone.now():
-                raise ValidationError(
-                    f"Usuario bloqueado temporalmente hasta {intento.bloqueado_hasta.strftime('%Y-%m-%d %H:%M')} por varios intentos fallidos."
+                raise forms.ValidationError(
+                    f"Usuario bloqueado temporalmente hasta "
+                    f"{intento.bloqueado_hasta.strftime('%Y-%m-%d %H:%M')} "
+                    f"por varios intentos fallidos."
                 )
 
-            self.user_cache = authenticate(self.request, username=username, password=password)
+            self.user_cache = authenticate(
+                self.request,
+                username=username,
+                password=password
+            )
 
             if self.user_cache is None:
                 intento.intentos_fallidos += 1
+
                 usuario = User.objects.filter(username=username).first()
                 if usuario:
                     intento.usuario = usuario
+
                 if intento.intentos_fallidos >= self.MAX_INTENTOS:
-                    intento.bloqueado_hasta = timezone.now() + timedelta(minutes=self.MINUTOS_BLOQUEO)
-                    intento.intentos_fallidos = 0
+                    intento.bloqueado_hasta = timezone.now() + timedelta(
+                        minutes=self.MINUTOS_BLOQUEO
+                    )
+
                 intento.save()
                 raise self.get_invalid_login_error()
 
@@ -92,6 +107,7 @@ class FormularioAcceso(AuthenticationForm):
             intento.intentos_fallidos = 0
             intento.bloqueado_hasta = None
             intento.save()
+
             self.confirm_login_allowed(self.user_cache)
 
         return self.cleaned_data
@@ -99,51 +115,6 @@ class FormularioAcceso(AuthenticationForm):
     class Meta:
         model = User
         fields = ['username', 'password', 'remember_me']
-
-    def confirm_login_allowed(self, user):
-        super().confirm_login_allowed(user)
-        perfil = getattr(user, 'perfil', None)
-        if perfil and perfil.esta_bloqueado():
-            from django.utils import timezone
-            minutos = int((perfil.bloqueado_hasta - timezone.now()).total_seconds() / 60) + 1
-            raise forms.ValidationError(
-                f"Cuenta bloqueada por múltiples intentos fallidos. Intenta en {minutos} minuto(s)."
-            )
-
-    def clean(self):
-        username = self.cleaned_data.get('username')
-        # Verificar bloqueo antes de autenticar
-        try:
-            user_obj = User.objects.get(username=username)
-            perfil = getattr(user_obj, 'perfil', None)
-            if perfil and perfil.esta_bloqueado():
-                from django.utils import timezone
-                minutos = int((perfil.bloqueado_hasta - timezone.now()).total_seconds() / 60) + 1
-                raise forms.ValidationError(
-                    f"Cuenta bloqueada. Intenta en {minutos} minuto(s)."
-                )
-        except User.DoesNotExist:
-            pass
-
-        try:
-            cleaned = super().clean()
-            # Login exitoso → resetear intentos
-            user_obj = self.get_user()
-            if user_obj:
-                perfil = getattr(user_obj, 'perfil', None)
-                if perfil:
-                    perfil.resetear_intentos()
-            return cleaned
-        except forms.ValidationError:
-            # Login fallido → registrar intento
-            try:
-                user_obj = User.objects.get(username=username)
-                perfil = getattr(user_obj, 'perfil', None)
-                if perfil:
-                    perfil.registrar_intento_fallido()
-            except User.DoesNotExist:
-                pass
-            raise
 
 
 class FormularioActualizarUsuario(forms.ModelForm): 

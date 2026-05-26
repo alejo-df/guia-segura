@@ -377,33 +377,18 @@ class VistaAccesoPersonalizada(LoginView):
         return super().form_valid(form)
 
     def form_invalid(self, form):
-        # Login fallido: registrar intento
         username = self.request.POST.get('username', '')
-        if username:
-            bloqueado = False
-            intentos_acumulados = "no disponible"
-            try:
-                from django.utils import timezone
-                from datetime import timedelta
-                intento, _ = IntentoLogin.objects.get_or_create(username=username)
-                intento.intentos_fallidos += 1
-                if intento.intentos_fallidos >= 5:
-                    intento.bloqueado_hasta = timezone.now() + timedelta(minutes=15)
-                    bloqueado = True
-                intento.save()
-                intentos_acumulados = intento.intentos_fallidos
-            except Exception as e:
-                print("Error registrando intento de login:", e)
-                traceback.print_exc()
 
+        if username:
             registrar_auditoria(
                 self.request,
                 criterio="Autenticación",
                 accion="Intento de inicio de sesión",
-                resultado="bloqueado" if bloqueado else "fallido",
-                detalle=f"Intento fallido para el usuario {username}. Intentos acumulados: {intentos_acumulados}.",
+                resultado="fallido",
+                detalle=f"Intento fallido para el usuario {username}.",
                 username=username,
             )
+
         return super().form_invalid(form)
 
 
