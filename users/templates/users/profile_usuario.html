@@ -4,7 +4,7 @@
 <div class="container my-4 my-lg-5">
     <div class="page-hero">
         <h1 class="fw-bold mb-2"><i class="fas fa-user-circle me-2"></i>Perfil de {{ user.username }}</h1>
-        <p>Consulta tus guías, genera tus reportes y actualiza la información básica de tu cuenta.</p>
+        <p>Administra tu información de cuenta y accede rápidamente a los módulos principales de GuiaSegura.</p>
     </div>
 
     <div class="row g-4 justify-content-center">
@@ -12,81 +12,69 @@
             <div class="profile-card profile-summary-card p-4 text-center">
                 <h3 class="profile-name-line fw-bold mb-1"><i class="fas fa-user-circle profile-name-icon" aria-hidden="true"></i>{{ user.username }}</h3>
                 <p class="text-muted mb-3">{{ user.email }}</p>
-                <div class="d-flex flex-wrap justify-content-center gap-2 mb-4">
-                    <span class="badge bg-secondary"><i class="fas fa-user"></i> Usuario</span>
+                <div class="d-flex flex-wrap justify-content-center gap-2">
+                    {% if user.is_superuser %}
+                        <span class="badge bg-danger"><i class="fas fa-crown"></i> Superusuario</span>
+                    {% elif user.is_staff %}
+                        <span class="badge bg-warning text-dark"><i class="fas fa-user-shield"></i> Staff</span>
+                    {% else %}
+                        <span class="badge bg-secondary"><i class="fas fa-user"></i> Usuario</span>
+                    {% endif %}
                     <span class="badge bg-primary"><i class="fas fa-check-circle"></i> Cuenta activa</span>
-                </div>
-
-                <div class="d-grid gap-3">
-                    <a href="{% url 'track-guide' %}" class="btn btn-success btn-lg">
-                        <i class="fas fa-search"></i> Consultar Número de Guía
-                    </a>
-                    <a href="{% url 'mis_notificaciones' %}" class="btn btn-info text-white btn-lg">
-                        <i class="fas fa-bell"></i> Mis Notificaciones
-                    </a>
                 </div>
             </div>
         </div>
 
         <div class="col-lg-8">
-            {% if user_form.errors %}
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <div id="form_errors">
-                        {% for key, value in user_form.errors.items %}
-                            <strong>{{ value }}</strong>
-                        {% endfor %}
-                    </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            {% if user_form.non_field_errors or profile_form.non_field_errors %}
+                <div class="form-error-summary" role="alert">
+                    <strong><i class="fas fa-exclamation-triangle me-1"></i>No se pudieron guardar los cambios.</strong>
+                    {% for error in user_form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+                    {% for error in profile_form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
                 </div>
             {% endif %}
 
             <div class="profile-card p-4 p-lg-5">
                 <div class="d-flex flex-column flex-md-row justify-content-between gap-3 mb-4">
                     <div>
-                        <h2 class="fw-bold mb-1">Panel del usuario</h2>
-                        <p class="text-muted mb-0">Accede a tus opciones principales y mantén tu perfil actualizado.</p>
+                        <h2 class="fw-bold mb-1">Información de la cuenta</h2>
+                        <p class="text-muted mb-0">Actualiza tus datos personales y preferencias.</p>
                     </div>
                     <a href="{% url 'password_change' %}" class="btn btn-outline-primary align-self-md-start">
                         <i class="fas fa-key"></i> Cambiar contraseña
                     </a>
                 </div>
 
-                <h4 class="fw-bold mb-3"><i class="fas fa-compass me-2"></i>Accesos rápidos</h4>
-                <div class="action-grid mb-4">
-                    <a href="{% url 'track-guide' %}" class="btn btn-success action-tile">
-                        <i class="fas fa-search"></i> Consultar Guía
-                    </a>
-                    <a href="{% url 'mis_guias_excel' %}" class="btn btn-success action-tile">
-                        <i class="fas fa-file-excel"></i> Mis guías en Excel
-                    </a>
-                    <a href="{% url 'mis_guias_pdf' %}" class="btn btn-danger action-tile">
-                        <i class="fas fa-file-pdf"></i> Mis guías en PDF
-                    </a>
-                    <a href="{% url 'mis_notificaciones' %}" class="btn btn-info text-white action-tile">
-                        <i class="fas fa-bell"></i> Mis Notificaciones
-                    </a>
-                </div>
-
-                <hr class="my-4">
-
-                <form method="POST" >
+                <form method="POST" novalidate>
                     {% csrf_token %}
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="small mb-1" for="{{ user_form.username.id_for_label }}">Nombre de usuario</label>
+                            <label class="small mb-1 required-label" for="{{ user_form.username.id_for_label }}">Nombre de usuario</label>
                             {{ user_form.username }}
+                            {% for error in user_form.username.errors %}<div class="field-error"><i class="fas fa-circle-exclamation input-error-icon"></i>{{ error }}</div>{% endfor %}
                         </div>
                         <div class="col-md-6">
-                            <label class="small mb-1" for="{{ user_form.email.id_for_label }}">Correo electrónico</label>
+                            <label class="small mb-1 required-label" for="{{ user_form.email.id_for_label }}">Correo electrónico</label>
                             {{ user_form.email }}
+                            {% for error in user_form.email.errors %}<div class="field-error"><i class="fas fa-circle-exclamation input-error-icon"></i>{{ error }}</div>{% endfor %}
                         </div>
                         <div class="col-12">
                             <label class="small mb-1" for="{{ profile_form.bio.id_for_label }}">Biografía</label>
                             {{ profile_form.bio }}
+                            {% for error in profile_form.bio.errors %}<div class="field-error"><i class="fas fa-circle-exclamation input-error-icon"></i>{{ error }}</div>{% endfor %}
                         </div>
                     </div>
 
-                    <div class="d-grid gap-2 d-md-flex justify-content-end mt-4">
+                    <hr class="my-4">
+
+                    <h4 class="fw-bold mb-3"><i class="fas fa-compass me-2"></i>Accesos rápidos</h4>
+                    <div class="action-grid mb-4">
+                        <a href="{% url 'track-guide' %}" class="btn btn-success action-tile">
+                            <i class="fas fa-search"></i> Consultar Guía
+                        </a>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-end">
                         <button type="reset" class="btn btn-outline-dark btn-lg">
                             <i class="fas fa-undo"></i> Restablecer
                         </button>

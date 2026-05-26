@@ -523,3 +523,75 @@ textarea:focus,
 [data-theme="dark"] .profile-name-icon {
     color: #93c5fd;
 }
+
+
+/* Estados de error y validacion accesible */
+.form-error-summary {
+    border: 1px solid rgba(220, 53, 69, 0.35);
+    background: rgba(220, 53, 69, 0.08);
+    color: #842029;
+    border-radius: 16px;
+    padding: 0.9rem 1rem;
+    margin-bottom: 1rem;
+}
+
+[data-theme="dark"] .form-error-summary {
+    color: #fecaca;
+    background: rgba(239, 68, 68, 0.12);
+    border-color: rgba(248, 113, 113, 0.35);
+}
+
+.field-error,
+.errorlist {
+    color: #dc3545;
+    font-size: 0.875rem;
+    margin-top: 0.35rem;
+    margin-bottom: 0;
+    list-style: none;
+    padding-left: 0;
+}
+
+[data-theme="dark"] .field-error,
+[data-theme="dark"] .errorlist {
+    color: #fca5a5;
+}
+
+.form-control.is-invalid,
+.form-select.is-invalid,
+.was-validated .form-control:invalid,
+.was-validated .form-select:invalid {
+    border-color: #dc3545 !important;
+    box-shadow: 0 0 0 0.18rem rgba(220, 53, 69, 0.14) !important;
+}
+
+.form-control.is-valid,
+.form-select.is-valid,
+.was-validated .form-control:valid,
+.was-validated .form-select:valid {
+    border-color: #198754 !important;
+    box-shadow: 0 0 0 0.18rem rgba(25, 135, 84, 0.12) !important;
+}
+
+.invalid-feedback,
+.valid-feedback {
+    font-size: 0.875rem;
+    margin-top: 0.35rem;
+}
+
+.required-label::after {
+    content: " *";
+    color: #dc3545;
+    font-weight: 700;
+}
+
+.form-help-text {
+    display: block;
+    color: var(--app-muted);
+    font-size: 0.84rem;
+    margin-top: 0.3rem;
+}
+
+.input-error-icon {
+    color: #dc3545;
+    margin-right: 0.3rem;
+}

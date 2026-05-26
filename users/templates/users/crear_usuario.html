@@ -1,24 +1,42 @@
 {% extends "users/base.html" %}
 {% block content %}
-<h2>Crear Usuario</h2>
+<div class="container my-4 my-lg-5">
+    <div class="page-hero">
+        <h1 class="fw-bold mb-2"><i class="fas fa-user-plus me-2"></i>Crear Usuario</h1>
+        <p>Registra un nuevo usuario y selecciona el rol que tendrá dentro del sistema.</p>
+    </div>
 
-<form method="POST">
-    {% csrf_token %}
-    
-    <input class="form-control" name="username" placeholder="Usuario" required>
-    <input class="form-control mt-2" name="email" placeholder="Email">
+    <div class="profile-card p-4 p-lg-5">
+        <form method="POST" novalidate>
+            {% csrf_token %}
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label required-label" for="usernameInput">Usuario</label>
+                    <input id="usernameInput" class="form-control" name="username" placeholder="Usuario" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="emailInput">Correo electrónico</label>
+                    <input id="emailInput" type="email" class="form-control" name="email" placeholder="correo@ejemplo.com">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label required-label" for="passwordInput">Contraseña</label>
+                    <input id="passwordInput" type="password" class="form-control" name="password" placeholder="Contraseña" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold required-label" for="roleInput">Rol</label>
+                    <select id="roleInput" name="role" class="form-select" required>
+                        <option value="normal">Usuario Normal</option>
+                        <option value="staff">Staff</option>
+                        <option value="superuser">Superusuario</option>
+                    </select>
+                </div>
+            </div>
 
-    <input class="form-control mt-2" name="password" placeholder="Contraseña" required>
-
-    <!-- Selección del rol -->
-    <label class="mt-3 fw-bold">Rol:</label>
-    <select name="role" class="form-control">
-        <option value="normal">Usuario Normal</option>
-        <option value="staff">Staff</option>
-        <option value="superuser">Superusuario</option>
-    </select>
-
-    <button class="btn btn-success mt-3">Crear</button>
-</form>
-
+            <div class="d-flex flex-wrap gap-2 justify-content-end mt-4">
+                <a href="{% url 'panel_usuarios' %}" class="btn btn-outline-secondary"><i class="fas fa-arrow-left"></i> Volver</a>
+                <button class="btn btn-success"><i class="fas fa-save"></i> Crear</button>
+            </div>
+        </form>
+    </div>
+</div>
 {% endblock %}

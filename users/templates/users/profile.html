@@ -26,14 +26,11 @@
         </div>
 
         <div class="col-lg-8">
-            {% if user_form.errors %}
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <div id="form_errors">
-                        {% for key, value in user_form.errors.items %}
-                            <strong>{{ value }}</strong>
-                        {% endfor %}
-                    </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            {% if user_form.non_field_errors or profile_form.non_field_errors %}
+                <div class="form-error-summary" role="alert">
+                    <strong><i class="fas fa-exclamation-triangle me-1"></i>No se pudieron guardar los cambios.</strong>
+                    {% for error in user_form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+                    {% for error in profile_form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
                 </div>
             {% endif %}
 
@@ -48,20 +45,23 @@
                     </a>
                 </div>
 
-                <form method="POST" >
+                <form method="POST" novalidate>
                     {% csrf_token %}
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="small mb-1" for="{{ user_form.username.id_for_label }}">Nombre de usuario</label>
+                            <label class="small mb-1 required-label" for="{{ user_form.username.id_for_label }}">Nombre de usuario</label>
                             {{ user_form.username }}
+                            {% for error in user_form.username.errors %}<div class="field-error"><i class="fas fa-circle-exclamation input-error-icon"></i>{{ error }}</div>{% endfor %}
                         </div>
                         <div class="col-md-6">
-                            <label class="small mb-1" for="{{ user_form.email.id_for_label }}">Correo electrónico</label>
+                            <label class="small mb-1 required-label" for="{{ user_form.email.id_for_label }}">Correo electrónico</label>
                             {{ user_form.email }}
+                            {% for error in user_form.email.errors %}<div class="field-error"><i class="fas fa-circle-exclamation input-error-icon"></i>{{ error }}</div>{% endfor %}
                         </div>
                         <div class="col-12">
                             <label class="small mb-1" for="{{ profile_form.bio.id_for_label }}">Biografía</label>
                             {{ profile_form.bio }}
+                            {% for error in profile_form.bio.errors %}<div class="field-error"><i class="fas fa-circle-exclamation input-error-icon"></i>{{ error }}</div>{% endfor %}
                         </div>
                     </div>
 

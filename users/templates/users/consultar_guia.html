@@ -17,7 +17,7 @@
                 </p>
 
                 <div class="p-4 border rounded mb-4">
-                    <form method="POST" id="formConsulta">
+                    <form method="POST" id="formConsulta" novalidate>
                         {% csrf_token %}
                         <div class="mb-3">
                             <label for="guiaInput" class="form-label fw-bold">Número de Guía:</label>
@@ -27,7 +27,9 @@
                                    name="guia_a_consultar"
                                    placeholder="Ej: 700188030227"
                                    value="{{ guia_consultada|default_if_none:'' }}"
-                                   required>
+                                   required
+                                   data-error-message="Debe ingresar el número de guía que desea consultar.">
+                            <div class="invalid-feedback">Debe ingresar el número de guía que desea consultar.</div>
                         </div>
                         <button type="submit" id="btnConsultar" class="btn btn-primary btn-lg w-100 mt-3">
                             <span id="btnTexto"><i class="fas fa-search"></i> Consultar</span>
@@ -81,7 +83,13 @@
 
 <script>
 // Mostrar spinner al enviar el formulario
-document.getElementById('formConsulta').addEventListener('submit', function() {
+document.getElementById('formConsulta').addEventListener('submit', function(event) {
+    if (!this.checkValidity()) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.classList.add('was-validated');
+        return;
+    }
     document.getElementById('btnConsultar').disabled = true;
     document.getElementById('btnTexto').classList.add('d-none');
     document.getElementById('btnCargando').classList.remove('d-none');
