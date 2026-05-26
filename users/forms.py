@@ -130,7 +130,7 @@ class FormularioActualizarUsuario(forms.ModelForm):
 
 
 class FormularioActualizarPerfil(forms.ModelForm): 
-    avatar = forms.ImageField(widget=forms.FileInput(attrs={'class': 'form-control-file'}))
+    avatar = forms.ImageField(required=False, widget=forms.FileInput(attrs={'class': 'form-control'}))
     bio = forms.CharField(widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 5}))
 
     class Meta:

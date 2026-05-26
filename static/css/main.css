@@ -434,3 +434,34 @@ textarea:focus,
         padding: 1.6rem;
     }
 }
+
+/* Ajustes finales de perfil y avatar */
+.profile-avatar-frame {
+    width: 168px;
+    height: 168px;
+    border-radius: 50%;
+    padding: 7px;
+    background: linear-gradient(135deg, var(--app-primary), var(--app-primary-2));
+    box-shadow: var(--app-shadow-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.profile-avatar-frame .profile-avatar,
+.profile-avatar {
+    width: 150px;
+    height: 150px;
+    border-radius: 50% !important;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+    background: var(--app-surface-solid);
+    border: 5px solid var(--app-surface-solid);
+    box-shadow: none;
+}
+
+[data-theme="dark"] .profile-avatar-frame .profile-avatar,
+[data-theme="dark"] .profile-avatar {
+    border-color: #0f172a;
+}
