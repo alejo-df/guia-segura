@@ -1,14 +1,14 @@
 {% extends "users/base.html" %}
 {% load static %}
 
-{% block title %}Iniciar Sesión{% endblock title %}
+{% block title %}Iniciar sesión{% endblock title %}
 
 {% block content %}
 <div class="container d-flex justify-content-center align-items-center" style="min-height: 100vh;">
     <div class="col-lg-6 col-md-8">
         <div class="p-5 bg-white rounded shadow-lg border">
             <h2 class="text-center display-6 fw-bolder text-dark mb-4">
-                <i class="fas fa-sign-in-alt me-2 text-primary"></i> Iniciar Sesión
+                <i class="fas fa-sign-in-alt me-2 text-primary"></i> Iniciar sesión
             </h2>
 
             {% if form.non_field_errors %}
@@ -43,7 +43,7 @@
 
             <div class="mt-4 text-center">
                 <p class="small mb-1">
-                    ¿No tienes una cuenta? <a href="{% url 'users-register' %}" class="text-decoration-none">Regístrate Ahora</a>
+                    ¿No tienes una cuenta? <a href="{% url 'users-register' %}" class="text-decoration-none">Regístrate ahora</a>
                 </p>
                 <p class="small">
                     <a href="{% url 'password_reset' %}" class="text-decoration-none">¿Olvidaste tu contraseña?</a>

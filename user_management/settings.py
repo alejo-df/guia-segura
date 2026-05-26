@@ -113,7 +113,7 @@ SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = os.getenv('GOOGLE_SECRET')
 # ==============================
 # INTERNACIONALIZACIÓN
 # ==============================
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'es'
 TIME_ZONE     = 'America/Bogota'
 USE_I18N      = True
 USE_L10N      = True

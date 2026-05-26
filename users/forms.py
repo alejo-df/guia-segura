@@ -51,19 +51,42 @@ class FormularioRegistro(UserCreationForm):
 
 
 class FormularioAcceso(AuthenticationForm):
-    username = forms.CharField(max_length=100, required=True, widget=forms.TextInput(attrs={
-        'placeholder': 'Username', 'class': 'form-control'
-    }))
+    error_messages = {
+        'invalid_login': (
+            "Por favor ingresa un usuario y una contraseña correctos. "
+            "Ten en cuenta que ambos campos distinguen mayúsculas y minúsculas."
+        ),
+        'inactive': "Esta cuenta está inactiva.",
+    }
 
-    password = forms.CharField(max_length=50, required=True, widget=forms.PasswordInput(attrs={
-        'placeholder': 'Password',
-        'class': 'form-control',
-        'data-toggle': 'password',
-        'id': 'password',
-        'name': 'password'
-    }))
+    username = forms.CharField(
+        label="Usuario",
+        max_length=100,
+        required=True,
+        error_messages={'required': 'Ingresa tu usuario.'},
+        widget=forms.TextInput(attrs={
+            'placeholder': 'Usuario',
+            'class': 'form-control',
+            'autocomplete': 'username',
+        })
+    )
 
-    remember_me = forms.BooleanField(required=False)
+    password = forms.CharField(
+        label="Contraseña",
+        max_length=50,
+        required=True,
+        error_messages={'required': 'Ingresa tu contraseña.'},
+        widget=forms.PasswordInput(attrs={
+            'placeholder': 'Contraseña',
+            'class': 'form-control',
+            'data-toggle': 'password',
+            'id': 'password',
+            'name': 'password',
+            'autocomplete': 'current-password',
+        })
+    )
+
+    remember_me = forms.BooleanField(label="Recordarme", required=False)
 
     MAX_INTENTOS = 5
     MINUTOS_BLOQUEO = 15
