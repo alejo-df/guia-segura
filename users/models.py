@@ -80,3 +80,33 @@ class HistorialNotificacion(models.Model):
 
     def __str__(self):
         return f"{self.numero_guia} - {self.canal} - {self.fecha}"
+
+# =====================================================
+# AUDITORÍA / LOG DE USABILIDAD
+# =====================================================
+class AuditoriaUsuario(models.Model):
+    RESULTADOS = [
+        ("exitoso", "Exitoso"),
+        ("fallido", "Fallido"),
+        ("bloqueado", "Bloqueado"),
+        ("error", "Error"),
+    ]
+
+    usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    username = models.CharField(max_length=150, blank=True)
+    fecha = models.DateTimeField(auto_now_add=True)
+    criterio = models.CharField(max_length=100)
+    accion = models.CharField(max_length=180)
+    resultado = models.CharField(max_length=20, choices=RESULTADOS, default="exitoso")
+    detalle = models.TextField(blank=True)
+    numero_guia = models.CharField(max_length=200, blank=True)
+    ip = models.GenericIPAddressField(null=True, blank=True)
+    metodo = models.CharField(max_length=10, blank=True)
+    ruta = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ["-fecha"]
+
+    def __str__(self):
+        nombre = self.username or (self.usuario.username if self.usuario else "Anónimo")
+        return f"{self.fecha:%Y-%m-%d %H:%M} - {nombre} - {self.accion}"

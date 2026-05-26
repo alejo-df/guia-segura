@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Perfil, HistorialGuia, IntentoLogin, ScrapingLog, HistorialNotificacion
+from .models import Perfil, HistorialGuia, IntentoLogin, ScrapingLog, HistorialNotificacion, AuditoriaUsuario
 
 @admin.register(Perfil)
 class PerfilAdmin(admin.ModelAdmin):
@@ -28,3 +28,10 @@ class HistorialNotificacionAdmin(admin.ModelAdmin):
     list_display = ('numero_guia', 'canal', 'destinatario', 'fecha', 'enviado')
     search_fields = ('numero_guia', 'destinatario', 'mensaje')
     list_filter = ('canal', 'enviado', 'fecha')
+
+@admin.register(AuditoriaUsuario)
+class AuditoriaUsuarioAdmin(admin.ModelAdmin):
+    list_display = ('fecha', 'username', 'criterio', 'accion', 'resultado', 'numero_guia', 'ip')
+    search_fields = ('username', 'criterio', 'accion', 'detalle', 'numero_guia')
+    list_filter = ('criterio', 'resultado', 'fecha')
+    readonly_fields = ('fecha',)

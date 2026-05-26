@@ -7,7 +7,9 @@ from django.contrib import messages
 from django.contrib.messages.views import SuccessMessageMixin
 from django.views import View
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth import logout as django_logout
 from django.db import models
+from django.db.models import Q
 import requests as req
 import uuid
 import os
@@ -23,7 +25,7 @@ from .forms import (
     FormularioActualizarUsuario,
     FormularioActualizarPerfil,
 )
-from .models import Perfil, HistorialGuia, ScrapingLog, HistorialNotificacion, IntentoLogin
+from .models import Perfil, HistorialGuia, ScrapingLog, HistorialNotificacion, IntentoLogin, AuditoriaUsuario
 
 from django.contrib.auth.decorators import user_passes_test
 
@@ -46,6 +48,60 @@ def es_admin(user):
     return user.is_superuser or user.is_staff
 
 
+def obtener_ip_cliente(request):
+    forwarded = request.META.get("HTTP_X_FORWARDED_FOR")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.META.get("REMOTE_ADDR")
+
+
+def registrar_auditoria(request=None, criterio="General", accion="", resultado="exitoso", detalle="", numero_guia="", usuario=None, username=""):
+    """Registra eventos de usabilidad sin interrumpir el flujo si el log falla."""
+    try:
+        usuario_final = usuario
+        username_final = username or ""
+        ip = None
+        metodo = ""
+        ruta = ""
+
+        if request is not None:
+            ip = obtener_ip_cliente(request)
+            metodo = request.method
+            ruta = request.path[:255]
+            if usuario_final is None and getattr(request, "user", None) and request.user.is_authenticated:
+                usuario_final = request.user
+            if not username_final:
+                if usuario_final is not None:
+                    username_final = usuario_final.username
+                else:
+                    username_final = request.POST.get("username", "") or request.GET.get("username", "") or "Anónimo"
+        elif usuario_final is not None:
+            username_final = usuario_final.username
+
+        AuditoriaUsuario.objects.create(
+            usuario=usuario_final if getattr(usuario_final, "is_authenticated", True) else None,
+            username=username_final[:150],
+            criterio=criterio[:100],
+            accion=accion[:180],
+            resultado=resultado,
+            detalle=detalle,
+            numero_guia=(numero_guia or "")[:200],
+            ip=ip,
+            metodo=metodo[:10],
+            ruta=ruta,
+        )
+    except Exception:
+        pass
+
+
+def nombre_rol(usuario):
+    if usuario.is_superuser:
+        return "Superusuario"
+    if usuario.is_staff:
+        return "Staff"
+    return "Normal"
+
+
 # ====================================================================
 # 🔥 PANEL DE USUARIOS
 # ====================================================================
@@ -66,6 +122,14 @@ def activar_usuario(request, user_id):
     usuario = get_object_or_404(User, id=user_id)
     usuario.is_active = True
     usuario.save()
+    registrar_auditoria(
+        request,
+        criterio="Usuarios",
+        accion="Reactivó usuario",
+        resultado="exitoso",
+        detalle=f"El administrador reactivó la cuenta de {usuario.username}.",
+        usuario=request.user,
+    )
     messages.success(request, f"El usuario '{usuario.username}' fue reactivado.")
     return redirect("usuarios_inactivos")
 
@@ -76,7 +140,15 @@ def crear_usuario(request):
         username = request.POST["username"]
         email = request.POST["email"]
         password = request.POST["password"]
-        User.objects.create_user(username=username, email=email, password=password)
+        nuevo_usuario = User.objects.create_user(username=username, email=email, password=password)
+        registrar_auditoria(
+            request,
+            criterio="Usuarios",
+            accion="Creó usuario",
+            resultado="exitoso",
+            detalle=f"El administrador creó el usuario {nuevo_usuario.username} con correo {nuevo_usuario.email}.",
+            usuario=request.user,
+        )
         messages.success(request, "Usuario creado correctamente")
         return redirect("panel_usuarios")
     return render(request, "users/crear_usuario.html")
@@ -86,11 +158,25 @@ def crear_usuario(request):
 def editar_usuario(request, user_id):
     usuario = User.objects.get(id=user_id)
     if request.method == "POST":
+        username_anterior = usuario.username
+        email_anterior = usuario.email
+        cambio_password = bool(request.POST["password"])
         usuario.username = request.POST["username"]
         usuario.email = request.POST["email"]
-        if request.POST["password"]:
+        if cambio_password:
             usuario.set_password(request.POST["password"])
         usuario.save()
+        detalle = f"Usuario editado. Antes: {username_anterior} / {email_anterior}. Ahora: {usuario.username} / {usuario.email}."
+        if cambio_password:
+            detalle += " También se actualizó la contraseña."
+        registrar_auditoria(
+            request,
+            criterio="Usuarios",
+            accion="Editó usuario",
+            resultado="exitoso",
+            detalle=detalle,
+            usuario=request.user,
+        )
         messages.success(request, "Usuario actualizado")
         return redirect("panel_usuarios")
     return render(request, "users/editar_usuario.html", {"usuario": usuario})
@@ -106,6 +192,14 @@ def eliminar_usuario(request, user_id):
     usuario.is_staff = False
     usuario.is_superuser = False
     usuario.save()
+    registrar_auditoria(
+        request,
+        criterio="Usuarios",
+        accion="Desactivó usuario",
+        resultado="exitoso",
+        detalle=f"El administrador desactivó la cuenta de {usuario.username}.",
+        usuario=request.user,
+    )
     messages.success(request, f"El usuario '{usuario.username}' fue desactivado correctamente.")
     return redirect("panel_usuarios")
 
@@ -137,6 +231,7 @@ def cambiar_rol_usuario(request, user_id, rol):
     if usuario == request.user:
         messages.error(request, "No puedes cambiar tu propio rol.")
         return redirect("panel_usuarios")
+    rol_anterior = nombre_rol(usuario)
     if rol == "superuser":
         usuario.is_superuser = True
         usuario.is_staff = True
@@ -147,9 +242,26 @@ def cambiar_rol_usuario(request, user_id, rol):
         usuario.is_superuser = False
         usuario.is_staff = False
     else:
+        registrar_auditoria(
+            request,
+            criterio="Roles",
+            accion="Intentó cambiar rol",
+            resultado="fallido",
+            detalle=f"Rol inválido solicitado para {usuario.username}: {rol}.",
+            usuario=request.user,
+        )
         messages.error(request, "Rol inválido.")
         return redirect("panel_usuarios")
     usuario.save()
+    rol_nuevo = nombre_rol(usuario)
+    registrar_auditoria(
+        request,
+        criterio="Roles",
+        accion="Cambió rol de usuario",
+        resultado="exitoso",
+        detalle=f"Usuario afectado: {usuario.username}. Rol anterior: {rol_anterior}. Rol nuevo: {rol_nuevo}.",
+        usuario=request.user,
+    )
     messages.success(request, f"El rol del usuario '{usuario.username}' fue actualizado a '{rol}'.")
     return redirect("panel_usuarios")
 
@@ -178,7 +290,16 @@ class VistaRegistro(View):
     def post(self, request):
         form = self.form_class(request.POST)
         if form.is_valid():
-            form.save()
+            nuevo_usuario = form.save()
+            registrar_auditoria(
+                request,
+                criterio="Registro",
+                accion="Registro de usuario nuevo",
+                resultado="exitoso",
+                detalle=f"Se registró el usuario {nuevo_usuario.username} con correo {nuevo_usuario.email}.",
+                usuario=nuevo_usuario,
+                username=nuevo_usuario.username,
+            )
             messages.success(request, "Cuenta creada")
             return redirect("login")
         return render(request, self.template_name, {'form': form})
@@ -192,6 +313,13 @@ def profile(request):
         if user_form.is_valid() and profile_form.is_valid():
             user_form.save()
             profile_form.save()
+            registrar_auditoria(
+                request,
+                criterio="Perfil",
+                accion="Actualizó perfil",
+                resultado="exitoso",
+                detalle="El usuario actualizó información de su perfil.",
+            )
             messages.success(request, "Perfil actualizado")
             return redirect("users-profile")
     else:
@@ -226,8 +354,18 @@ class VistaAccesoPersonalizada(LoginView):
             self.request.session.set_expiry(0)
         # Login exitoso: resetear intentos fallidos
         username = form.cleaned_data.get('username')
+        usuario = form.get_user()
         IntentoLogin.objects.filter(username=username).update(
             intentos_fallidos=0, bloqueado_hasta=None
+        )
+        registrar_auditoria(
+            self.request,
+            criterio="Autenticación",
+            accion="Inicio de sesión",
+            resultado="exitoso",
+            detalle=f"El usuario {usuario.username} inició sesión correctamente.",
+            usuario=usuario,
+            username=usuario.username,
         )
         return super().form_valid(form)
 
@@ -239,9 +377,19 @@ class VistaAccesoPersonalizada(LoginView):
             from datetime import timedelta
             intento, _ = IntentoLogin.objects.get_or_create(username=username)
             intento.intentos_fallidos += 1
+            bloqueado = False
             if intento.intentos_fallidos >= 5:
                 intento.bloqueado_hasta = timezone.now() + timedelta(minutes=15)
+                bloqueado = True
             intento.save()
+            registrar_auditoria(
+                self.request,
+                criterio="Autenticación",
+                accion="Intento de inicio de sesión",
+                resultado="bloqueado" if bloqueado else "fallido",
+                detalle=f"Intento fallido para el usuario {username}. Intentos acumulados: {intento.intentos_fallidos}.",
+                username=username,
+            )
         return super().form_invalid(form)
 
 
@@ -256,6 +404,20 @@ class VistaCambiarContrasena(SuccessMessageMixin, PasswordChangeView):
     template_name = 'users/change_password.html'
     success_url = reverse_lazy('users-profile')
     success_message = "Contraseña cambiada"
+
+
+@login_required
+def cerrar_sesion(request):
+    username = request.user.username
+    registrar_auditoria(
+        request,
+        criterio="Autenticación",
+        accion="Cierre de sesión",
+        resultado="exitoso",
+        detalle=f"El usuario {username} cerró sesión.",
+    )
+    django_logout(request)
+    return redirect("login")
 
 
 # ====================================================================
@@ -274,6 +436,14 @@ def VistaConsultarGuia(request):
             scraper_secret = os.getenv('SCRAPER_SECRET', '').strip()
 
             if not scraper_url:
+                registrar_auditoria(
+                    request,
+                    criterio="Consulta de guía",
+                    accion="Consultó guía",
+                    resultado="fallido",
+                    detalle="El servidor de consultas no estaba activo o SCRAPER_URL no estaba configurado.",
+                    numero_guia=guia_consultada,
+                )
                 messages.error(request, "El servidor de consultas no está activo. Asegúrate de tener ngrok corriendo.")
                 return render(request, "users/consultar_guia.html", {
                     "resultados": None,
@@ -330,6 +500,15 @@ def VistaConsultarGuia(request):
                             enviado=bool(respuesta_cliente.get("success", True)),
                         )
 
+                        registrar_auditoria(
+                            request,
+                            criterio="Consulta de guía",
+                            accion="Consultó guía",
+                            resultado="exitoso",
+                            detalle=f"Consulta ID {nuevo_consulta_id}. Eventos obtenidos: {len(eventos)}. Último estado: {ultimo_evento.get('estado', '')}.",
+                            numero_guia=guia_consultada,
+                        )
+
                         resultados_consulta = eventos
                         messages.success(request, "Guía consultada correctamente")
                     else:
@@ -339,6 +518,14 @@ def VistaConsultarGuia(request):
                             tipo_error="sin_resultados",
                             mensaje=error_msg,
                         )
+                        registrar_auditoria(
+                            request,
+                            criterio="Consulta de guía",
+                            accion="Consultó guía",
+                            resultado="fallido",
+                            detalle=error_msg,
+                            numero_guia=guia_consultada,
+                        )
                         messages.warning(request, error_msg)
                 else:
                     error_msg = f"Error al consultar la guía. Código: {response.status_code} - {response.text[:200]}"
@@ -346,6 +533,14 @@ def VistaConsultarGuia(request):
                         numero_guia=guia_consultada,
                         tipo_error="http",
                         mensaje=error_msg,
+                    )
+                    registrar_auditoria(
+                        request,
+                        criterio="Consulta de guía",
+                        accion="Consultó guía",
+                        resultado="error",
+                        detalle=error_msg,
+                        numero_guia=guia_consultada,
                     )
                     messages.error(request, error_msg)
 
@@ -355,12 +550,28 @@ def VistaConsultarGuia(request):
                     tipo_error="timeout",
                     mensaje="La consulta tardó demasiado (timeout 60s).",
                 )
+                registrar_auditoria(
+                    request,
+                    criterio="Consulta de guía",
+                    accion="Consultó guía",
+                    resultado="error",
+                    detalle="La consulta tardó demasiado (timeout 60s).",
+                    numero_guia=guia_consultada,
+                )
                 messages.error(request, "La consulta tardó demasiado. Intenta nuevamente.")
             except Exception as e:
                 ScrapingLog.objects.create(
                     numero_guia=guia_consultada,
                     tipo_error="excepcion",
                     mensaje=str(e),
+                )
+                registrar_auditoria(
+                    request,
+                    criterio="Consulta de guía",
+                    accion="Consultó guía",
+                    resultado="error",
+                    detalle=f"Error inesperado: {e}",
+                    numero_guia=guia_consultada,
                 )
                 messages.error(request, f"Error inesperado: {e}")
 
@@ -454,6 +665,14 @@ def crear_evento(request, consulta_id):
             sucursal=request.POST.get("sucursal"),
             fecha_consulta=datetime.now()
         )
+        registrar_auditoria(
+            request,
+            criterio="Guías",
+            accion="Creó evento de guía",
+            resultado="exitoso",
+            detalle=f"Consulta ID {consulta_id}. Estado registrado: {estado}.",
+            numero_guia=consulta.numero_guia,
+        )
         messages.success(request, "Evento creado correctamente.")
         return redirect("detalle_consulta", consulta_id=consulta_id)
 
@@ -475,12 +694,21 @@ def editar_evento(request, consulta_id, evento_id):
         if estado == "otro":
             estado = request.POST.get("estado_otro")
 
+        estado_anterior = evento.estado
         evento.fecha = request.POST.get("fecha")
         evento.hora = request.POST.get("hora")
         evento.estado = estado
         evento.sucursal = request.POST.get("sucursal")
         evento.save()
 
+        registrar_auditoria(
+            request,
+            criterio="Guías",
+            accion="Editó evento de guía",
+            resultado="exitoso",
+            detalle=f"Consulta ID {consulta_id}. Estado anterior: {estado_anterior}. Estado nuevo: {estado}.",
+            numero_guia=evento.numero_guia,
+        )
         messages.success(request, "Evento actualizado correctamente.")
         return redirect("detalle_consulta", consulta_id=consulta_id)
 
@@ -499,6 +727,14 @@ def eliminar_evento(request, consulta_id, evento_id):
     evento = get_object_or_404(HistorialGuia, id=evento_id)
     evento.activo = False
     evento.save()
+    registrar_auditoria(
+        request,
+        criterio="Guías",
+        accion="Eliminó evento de guía",
+        resultado="exitoso",
+        detalle=f"Consulta ID {consulta_id}. Evento ID {evento_id} marcado como inactivo.",
+        numero_guia=evento.numero_guia,
+    )
     messages.success(request, "Evento marcado como eliminado.")
     return redirect("detalle_consulta", consulta_id=consulta_id)
 
@@ -520,6 +756,14 @@ def restaurar_evento(request, consulta_id, evento_id):
     evento = get_object_or_404(HistorialGuia, id=evento_id)
     evento.activo = True
     evento.save()
+    registrar_auditoria(
+        request,
+        criterio="Guías",
+        accion="Restauró evento de guía",
+        resultado="exitoso",
+        detalle=f"Consulta ID {consulta_id}. Evento ID {evento_id} restaurado.",
+        numero_guia=evento.numero_guia,
+    )
     messages.success(request, "Evento restaurado correctamente.")
     return redirect("detalle_consulta_inactivos", consulta_id=consulta_id)
 
@@ -551,6 +795,13 @@ def exportar_guias_excel(request):
     registros = obtener_registros_guias_filtrados(request)
 
     if not registros.exists():
+        registrar_auditoria(
+            request,
+            criterio="Reportes",
+            accion="Generó reporte Excel",
+            resultado="fallido",
+            detalle="No había registros activos para exportar.",
+        )
         messages.warning(request, "No hay registros activos para exportar.")
         return redirect("panel_guias")
 
@@ -616,6 +867,13 @@ def exportar_guias_excel(request):
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
     response["Content-Disposition"] = 'attachment; filename="reporte_guias.xlsx"'
+    registrar_auditoria(
+        request,
+        criterio="Reportes",
+        accion="Generó reporte Excel",
+        resultado="exitoso",
+        detalle=f"Reporte Excel administrativo generado con {registros.count()} registros.",
+    )
     return response
 
 
@@ -627,6 +885,13 @@ def exportar_guias_pdf(request):
     registros = obtener_registros_guias_filtrados(request)
 
     if not registros.exists():
+        registrar_auditoria(
+            request,
+            criterio="Reportes",
+            accion="Generó reporte PDF",
+            resultado="fallido",
+            detalle="No había registros activos para exportar.",
+        )
         messages.warning(request, "No hay registros activos para exportar.")
         return redirect("panel_guias")
 
@@ -656,12 +921,74 @@ def exportar_guias_pdf(request):
             y = alto - 50
 
     pdf.save()
+    registrar_auditoria(
+        request,
+        criterio="Reportes",
+        accion="Generó reporte PDF",
+        resultado="exitoso",
+        detalle=f"Reporte PDF administrativo generado con {registros.count()} registros.",
+    )
     return response
 
 
 # ====================================================================
 # 🧾 HISTORIALES ADMINISTRATIVOS - SPRINT 4
 # ====================================================================
+
+
+@user_passes_test(es_admin)
+def panel_auditoria_usuarios(request):
+    logs = AuditoriaUsuario.objects.select_related("usuario").all()
+
+    q = request.GET.get("q", "").strip()
+    usuario = request.GET.get("usuario", "").strip()
+    criterio = request.GET.get("criterio", "").strip()
+    accion = request.GET.get("accion", "").strip()
+    resultado = request.GET.get("resultado", "").strip()
+    fecha_inicio = request.GET.get("fecha_inicio", "").strip()
+    fecha_fin = request.GET.get("fecha_fin", "").strip()
+
+    if q:
+        logs = logs.filter(
+            Q(username__icontains=q) |
+            Q(criterio__icontains=q) |
+            Q(accion__icontains=q) |
+            Q(detalle__icontains=q) |
+            Q(numero_guia__icontains=q) |
+            Q(ruta__icontains=q)
+        )
+    if usuario:
+        logs = logs.filter(username__icontains=usuario)
+    if criterio:
+        logs = logs.filter(criterio__icontains=criterio)
+    if accion:
+        logs = logs.filter(accion__icontains=accion)
+    if resultado:
+        logs = logs.filter(resultado=resultado)
+    if fecha_inicio:
+        logs = logs.filter(fecha__date__gte=fecha_inicio)
+    if fecha_fin:
+        logs = logs.filter(fecha__date__lte=fecha_fin)
+
+    criterios = AuditoriaUsuario.objects.values_list("criterio", flat=True).distinct().order_by("criterio")
+    acciones = AuditoriaUsuario.objects.values_list("accion", flat=True).distinct().order_by("accion")
+
+    return render(request, "users/panel_auditoria_usuarios.html", {
+        "logs": logs[:300],
+        "criterios": criterios,
+        "acciones": acciones,
+        "filtros": {
+            "q": q,
+            "usuario": usuario,
+            "criterio": criterio,
+            "accion": accion,
+            "resultado": resultado,
+            "fecha_inicio": fecha_inicio,
+            "fecha_fin": fecha_fin,
+        }
+    })
+
+
 @user_passes_test(es_admin)
 def panel_logs_scraping(request):
     logs = ScrapingLog.objects.order_by("-fecha")[:100]
@@ -700,6 +1027,13 @@ def mis_guias_excel(request):
     ).order_by("consulta_id", "fecha_consulta")
 
     if not registros.exists():
+        registrar_auditoria(
+            request,
+            criterio="Reportes",
+            accion="Descargó reporte Excel personal",
+            resultado="fallido",
+            detalle="El usuario no tenía guías guardadas para exportar.",
+        )
         messages.warning(request, "No tienes guías guardadas para exportar.")
         return redirect("users-profile")
 
@@ -739,6 +1073,13 @@ def mis_guias_excel(request):
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
     response["Content-Disposition"] = f'attachment; filename="mis_guias_{request.user.username}.xlsx"'
+    registrar_auditoria(
+        request,
+        criterio="Reportes",
+        accion="Descargó reporte Excel personal",
+        resultado="exitoso",
+        detalle=f"El usuario descargó su reporte Excel personal con {registros.count()} registros.",
+    )
     return response
 
 
@@ -749,6 +1090,13 @@ def mis_guias_pdf(request):
     ).order_by("consulta_id", "fecha_consulta")
 
     if not registros.exists():
+        registrar_auditoria(
+            request,
+            criterio="Reportes",
+            accion="Descargó reporte PDF personal",
+            resultado="fallido",
+            detalle="El usuario no tenía guías guardadas para exportar.",
+        )
         messages.warning(request, "No tienes guías guardadas para exportar.")
         return redirect("users-profile")
 
@@ -783,6 +1131,14 @@ def mis_guias_pdf(request):
         destinatario=request.user.username,
         mensaje=f"El usuario descargó su reporte PDF personal.",
         enviado=True,
+    )
+
+    registrar_auditoria(
+        request,
+        criterio="Reportes",
+        accion="Descargó reporte PDF personal",
+        resultado="exitoso",
+        detalle=f"El usuario descargó su reporte PDF personal con {registros.count()} registros.",
     )
 
     return response

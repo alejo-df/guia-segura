@@ -19,8 +19,8 @@ urlpatterns = [
     path('track-guide/', views.VistaConsultarGuia, name='track-guide'),
 
     # Login / Logout
-    path('login/', auth_views.LoginView.as_view(template_name='users/login.html'), name='login'),
-    path('logout/', auth_views.LogoutView.as_view(template_name='users/logout.html'), name='logout'),
+    path('login/', views.VistaAccesoPersonalizada.as_view(template_name='users/login.html', authentication_form=views.FormularioAcceso), name='login'),
+    path('logout/', views.cerrar_sesion, name='logout'),
 
     # --- PANEL USUARIOS ---
     path('panel/usuarios/', views.panel_usuarios, name='panel_usuarios'),
@@ -48,6 +48,7 @@ urlpatterns = [
     path('panel/logs/scraping/', views.panel_logs_scraping, name='panel_logs_scraping'),
     path('panel/logs/notificaciones/', views.panel_notificaciones, name='panel_notificaciones'),
     path('panel/logs/intentos/', views.panel_intentos_login, name='panel_intentos_login'),
+    path('panel/logs/auditoria/', views.panel_auditoria_usuarios, name='panel_auditoria_usuarios'),
     path('panel/logs/intentos/desbloquear/<int:intento_id>/', views.desbloquear_cuenta, name='desbloquear_cuenta'),
     # --- USUARIO NORMAL ---
     path('mis-guias/excel/', views.mis_guias_excel, name='mis_guias_excel'),

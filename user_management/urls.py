@@ -7,7 +7,7 @@ from django.conf.urls.static import static
 
 from django.contrib.auth import views as auth_views
 # ⬅️ IMPORTACIONES ACTUALIZADAS
-from users.views import VistaAccesoPersonalizada, VistaRestablecerContrasena, VistaCambiarContrasena 
+from users.views import VistaAccesoPersonalizada, VistaRestablecerContrasena, VistaCambiarContrasena, cerrar_sesion 
 
 # ⬅️ IMPORTACIÓN ACTUALIZADA
 from users.forms import FormularioAcceso 
@@ -21,7 +21,7 @@ urlpatterns = [
     path('login/', VistaAccesoPersonalizada.as_view(redirect_authenticated_user=True, template_name='users/login.html',
                                            authentication_form=FormularioAcceso), name='login'),
 
-    path('logout/', auth_views.LogoutView.as_view(template_name='users/logout.html'), name='logout'),
+    path('logout/', cerrar_sesion, name='logout'),
 
     # ⬅️ USO DE VISTA ACTUALIZADA
     path('password-reset/', VistaRestablecerContrasena.as_view(), name='password_reset'),
