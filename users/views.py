@@ -13,6 +13,7 @@ from django.db.models import Q
 import requests as req
 import uuid
 import os
+import traceback
 from datetime import datetime
 
 # Modelos y Formularios
@@ -86,12 +87,13 @@ def registrar_auditoria(request=None, criterio="General", accion="", resultado="
             resultado=resultado,
             detalle=detalle,
             numero_guia=(numero_guia or "")[:200],
-            ip=ip,
+            ip=(ip or "")[:100],
             metodo=metodo[:10],
             ruta=ruta,
         )
-    except Exception:
-        pass
+    except Exception as e:
+        print("Error registrando auditoría:", e)
+        traceback.print_exc()
 
 
 def nombre_rol(usuario):
@@ -355,9 +357,14 @@ class VistaAccesoPersonalizada(LoginView):
         # Login exitoso: resetear intentos fallidos
         username = form.cleaned_data.get('username')
         usuario = form.get_user()
-        IntentoLogin.objects.filter(username=username).update(
-            intentos_fallidos=0, bloqueado_hasta=None
-        )
+        try:
+            IntentoLogin.objects.filter(username=username).update(
+                intentos_fallidos=0, bloqueado_hasta=None
+            )
+        except Exception as e:
+            print("Error actualizando intentos de login:", e)
+            traceback.print_exc()
+
         registrar_auditoria(
             self.request,
             criterio="Autenticación",
@@ -373,21 +380,28 @@ class VistaAccesoPersonalizada(LoginView):
         # Login fallido: registrar intento
         username = self.request.POST.get('username', '')
         if username:
-            from django.utils import timezone
-            from datetime import timedelta
-            intento, _ = IntentoLogin.objects.get_or_create(username=username)
-            intento.intentos_fallidos += 1
             bloqueado = False
-            if intento.intentos_fallidos >= 5:
-                intento.bloqueado_hasta = timezone.now() + timedelta(minutes=15)
-                bloqueado = True
-            intento.save()
+            intentos_acumulados = "no disponible"
+            try:
+                from django.utils import timezone
+                from datetime import timedelta
+                intento, _ = IntentoLogin.objects.get_or_create(username=username)
+                intento.intentos_fallidos += 1
+                if intento.intentos_fallidos >= 5:
+                    intento.bloqueado_hasta = timezone.now() + timedelta(minutes=15)
+                    bloqueado = True
+                intento.save()
+                intentos_acumulados = intento.intentos_fallidos
+            except Exception as e:
+                print("Error registrando intento de login:", e)
+                traceback.print_exc()
+
             registrar_auditoria(
                 self.request,
                 criterio="Autenticación",
                 accion="Intento de inicio de sesión",
                 resultado="bloqueado" if bloqueado else "fallido",
-                detalle=f"Intento fallido para el usuario {username}. Intentos acumulados: {intento.intentos_fallidos}.",
+                detalle=f"Intento fallido para el usuario {username}. Intentos acumulados: {intentos_acumulados}.",
                 username=username,
             )
         return super().form_invalid(form)
