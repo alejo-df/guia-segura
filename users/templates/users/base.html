@@ -5,77 +5,89 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
-    <title>{% block title %} GuiaSegura TresUnoUno {% endblock title %}</title>
+    <title>{% block title %}GuiaSegura TresUnoUno{% endblock title %}</title>
 
-    <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet"> 
+    <script>
+        (function () {
+            const savedTheme = localStorage.getItem('guiaSeguraTheme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
+
+    <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
     <link href="{% static 'css/main.css' %}" rel="stylesheet">
-
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 
-<body class="d-flex flex-column min-vh-100">
+<body class="d-flex flex-column min-vh-100 app-body">
 
-    {# Ocultamos navbar en home ('/') y en login ('/login') #}
     {% with current_path=request.path|slice:":-1" %}
     {% if current_path != '' and current_path != '/login' %}
 
-    <nav class="navbar navbar-expand-md navbar-light bg-white border-bottom shadow-sm">
-        <div class="container">
-
-            <a href="{% url 'users-home' %}" class="navbar-brand fw-bold fs-4" style="color: #4a90e2 !important;">
-                <i class="fas fa-shipping-fast"></i> GuiaSegura
+    <nav class="navbar navbar-expand-lg app-navbar sticky-top">
+        <div class="container-fluid px-3 px-lg-5">
+            <a href="{% url 'users-home' %}" class="navbar-brand app-brand">
+                <span class="brand-icon"><i class="fas fa-shipping-fast"></i></span>
+                <span>GuiaSegura</span>
             </a>
 
-            <div class="ms-auto d-flex align-items-center gap-2">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar" aria-controls="mainNavbar" aria-expanded="false" aria-label="Alternar navegación">
+                <span class="navbar-toggler-icon"></span>
+            </button>
 
-                {% if user.is_authenticated %}
+            <div class="collapse navbar-collapse justify-content-end" id="mainNavbar">
+                <div class="navbar-actions d-flex flex-column flex-lg-row align-items-lg-center gap-2 mt-3 mt-lg-0">
+                    {% if user.is_authenticated %}
+                        <span class="welcome-pill">
+                            <i class="fas fa-hand-sparkles"></i>
+                            Bienvenido, <strong>{{ user.username }}</strong>
+                        </span>
 
-                    <span class="navbar-text d-none d-sm-inline text-dark me-2">
-                        Bienvenido, **{{ user.first_name.title|default:'Usuario' }}**
-                    </span>
-
-                    <a href="{% url 'users-profile' %}" class="btn btn-outline-primary btn-sm">
-                        <i class="fas fa-user-circle"></i> Perfil
-                    </a>
-
-                    {# ⭐ BOTÓN DEL PANEL PERSONALIZADO ⭐ #}
-                    {% if user.is_superuser %}
-                    <a href="{% url 'panel_usuarios' %}" class="btn btn-warning btn-sm">
-                        <i class="fas fa-users-cog"></i> Administrar Usuarios
-                    </a>
-                    {% endif %}
-
-                    <form method="post" action="{% url 'logout' %}" style="display: inline;">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-danger btn-sm">
-                            <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+                        <button type="button" class="btn btn-theme-toggle btn-sm" id="themeToggle" aria-label="Cambiar modo nocturno">
+                            <i class="fas fa-moon"></i>
+                            <span>Modo nocturno</span>
                         </button>
-                    </form>
 
-                {% else %}
+                        <a href="{% url 'users-profile' %}" class="btn btn-outline-primary btn-sm app-nav-btn">
+                            <i class="fas fa-user-circle"></i> Perfil
+                        </a>
 
-                    <a href="{% url 'login' %}" class="btn btn-primary btn-sm">
-                        <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
-                    </a>
-                    <a href="{% url 'users-register' %}" class="btn btn-outline-secondary btn-sm">
-                        Registrarme
-                    </a>
+                        {% if user.is_superuser %}
+                        <a href="{% url 'panel_usuarios' %}" class="btn btn-warning btn-sm app-nav-btn">
+                            <i class="fas fa-users-cog"></i> Administrar Usuarios
+                        </a>
+                        {% endif %}
 
-                {% endif %}
+                        <form method="post" action="{% url 'logout' %}" class="m-0">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger btn-sm app-nav-btn">
+                                <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+                            </button>
+                        </form>
+                    {% else %}
+                        <button type="button" class="btn btn-theme-toggle btn-sm" id="themeToggle" aria-label="Cambiar modo nocturno">
+                            <i class="fas fa-moon"></i>
+                            <span>Modo nocturno</span>
+                        </button>
+                        <a href="{% url 'login' %}" class="btn btn-primary btn-sm app-nav-btn">
+                            <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
+                        </a>
+                        <a href="{% url 'users-register' %}" class="btn btn-outline-secondary btn-sm app-nav-btn">
+                            Registrarme
+                        </a>
+                    {% endif %}
+                </div>
             </div>
-
         </div>
     </nav>
 
     {% endif %}
 
-    <main class="flex-grow-1">
-
-        {# Mensajes Django #}
+    <main class="flex-grow-1 app-main">
         {% if messages %}
             <div class="container mt-3">
                 {% for message in messages %}
-                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show app-alert" role="alert">
                         {{ message }}
                         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
@@ -85,14 +97,12 @@
 
         {% block content %}
         {% endblock %}
-
     </main>
 
-    {# Ocultar footer en Home y Login #}
     {% if current_path != '' and current_path != '/login' %}
-    <footer class="footer mt-auto py-3 bg-light border-top">
+    <footer class="footer mt-auto py-3 app-footer">
         <div class="container text-center">
-            <span class="text-muted">© 2025 GuiaSegura. Todos los derechos reservados.</span>
+            <span>© 2025 GuiaSegura. Todos los derechos reservados.</span>
         </div>
     </footer>
     {% endif %}
@@ -101,6 +111,5 @@
     <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
     <script src="https://unpkg.com/bootstrap-show-password@1.2.1/dist/bootstrap-show-password.min.js"></script>
     <script src="{% static 'js/script.js' %}"></script>
-
 </body>
 </html>

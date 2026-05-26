@@ -1,21 +1,24 @@
 {% extends "users/base.html" %}
 {% load static %}
 {% block content %}
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <h2 class="fw-bold mb-0">
-            <i class="fas fa-clipboard-list"></i> Registro de Usuarios
-        </h2>
-        <div class="d-flex gap-2 flex-wrap">
-            <a href="{% url 'panel_usuarios' %}" class="btn btn-outline-dark">
-                <i class="fas fa-arrow-left"></i> Volver a Usuarios
-            </a>
-            <a href="{% url 'panel_guias' %}" class="btn btn-outline-primary">
-                <i class="fas fa-box-open"></i> Guías Guardadas
-            </a>
-            <a href="{% url 'panel_intentos_login' %}" class="btn btn-outline-danger">
-                <i class="fas fa-lock"></i> Intentos Login
-            </a>
+<div class="container-fluid px-3 px-lg-5 my-4">
+    <div class="page-hero">
+        <div class="d-flex flex-column flex-xl-row justify-content-between gap-3 align-items-xl-end">
+            <div>
+                <h1 class="fw-bold mb-2"><i class="fas fa-clipboard-list me-2"></i>Registro de Usuarios</h1>
+                <p>Auditoría de usabilidad con usuario, fecha, hora, criterio, acción, resultado, detalle, IP y número de guía cuando aplica.</p>
+            </div>
+            <div class="d-flex gap-2 flex-wrap position-relative" style="z-index: 2;">
+                <a href="{% url 'panel_usuarios' %}" class="btn btn-outline-dark">
+                    <i class="fas fa-arrow-left"></i> Volver a Usuarios
+                </a>
+                <a href="{% url 'panel_guias' %}" class="btn btn-outline-primary">
+                    <i class="fas fa-box-open"></i> Guías Guardadas
+                </a>
+                <a href="{% url 'panel_intentos_login' %}" class="btn btn-outline-danger">
+                    <i class="fas fa-lock"></i> Intentos Login
+                </a>
+            </div>
         </div>
     </div>
 
@@ -24,20 +27,20 @@
         Aquí se muestra la auditoría de usabilidad: quién hizo una acción, fecha y hora, criterio, resultado, detalle y número de guía cuando aplica.
     </div>
 
-    <form method="get" class="card card-body mb-3 shadow-sm">
-        <div class="row g-2 align-items-end">
-            <div class="col-md-4">
+    <form method="get" class="panel-card p-3 p-lg-4 mb-4">
+        <div class="row g-3 align-items-end">
+            <div class="col-lg-4">
                 <label class="form-label">Búsqueda general</label>
                 <div class="input-group">
                     <span class="input-group-text"><i class="fas fa-search"></i></span>
                     <input type="text" name="q" value="{{ filtros.q }}" class="form-control" placeholder="Usuario, acción, detalle, guía...">
                 </div>
             </div>
-            <div class="col-md-2">
+            <div class="col-lg-2 col-md-6">
                 <label class="form-label">Usuario</label>
                 <input type="text" name="usuario" value="{{ filtros.usuario }}" class="form-control" placeholder="Usuario">
             </div>
-            <div class="col-md-3">
+            <div class="col-lg-3 col-md-6">
                 <label class="form-label">Criterio</label>
                 <select name="criterio" class="form-select">
                     <option value="">Todos</option>
@@ -46,7 +49,7 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-lg-3 col-md-6">
                 <label class="form-label">Acción</label>
                 <select name="accion" class="form-select">
                     <option value="">Todas</option>
@@ -55,7 +58,7 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-2">
+            <div class="col-lg-2 col-md-6">
                 <label class="form-label">Resultado</label>
                 <select name="resultado" class="form-select">
                     <option value="">Todos</option>
@@ -65,20 +68,20 @@
                     <option value="error" {% if filtros.resultado == 'error' %}selected{% endif %}>Error</option>
                 </select>
             </div>
-            <div class="col-md-2">
+            <div class="col-lg-2 col-md-6">
                 <label class="form-label">Fecha inicio</label>
                 <input type="date" name="fecha_inicio" value="{{ filtros.fecha_inicio }}" class="form-control">
             </div>
-            <div class="col-md-2">
+            <div class="col-lg-2 col-md-6">
                 <label class="form-label">Fecha fin</label>
                 <input type="date" name="fecha_fin" value="{{ filtros.fecha_fin }}" class="form-control">
             </div>
-            <div class="col-md-2 d-grid">
+            <div class="col-lg-2 col-md-6 d-grid">
                 <button type="submit" class="btn btn-primary">
                     <i class="fas fa-filter"></i> Filtrar
                 </button>
             </div>
-            <div class="col-md-2 d-grid">
+            <div class="col-lg-2 col-md-6 d-grid">
                 <a href="{% url 'panel_auditoria_usuarios' %}" class="btn btn-outline-secondary">
                     <i class="fas fa-eraser"></i> Limpiar
                 </a>
@@ -105,7 +108,7 @@
             {% for log in logs %}
                 <tr>
                     <td>{{ log.fecha|date:"Y-m-d H:i:s" }}</td>
-                    <td>{{ log.username|default:"Anónimo" }}</td>
+                    <td class="fw-semibold">{{ log.username|default:"Anónimo" }}</td>
                     <td>{{ log.criterio }}</td>
                     <td>{{ log.accion }}</td>
                     <td>
@@ -136,9 +139,9 @@
 
     <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
         <small class="text-muted">Se muestran máximo 300 registros por consulta.</small>
-        <div>
-            <button class="btn btn-outline-primary me-2" onclick="changeAuditPage(-1)">Anterior</button>
-            <button class="btn btn-outline-primary" onclick="changeAuditPage(1)">Siguiente</button>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-primary" onclick="changeAuditPage(-1)"><i class="fas fa-chevron-left"></i> Anterior</button>
+            <button class="btn btn-outline-primary" onclick="changeAuditPage(1)">Siguiente <i class="fas fa-chevron-right"></i></button>
         </div>
     </div>
     {% else %}
