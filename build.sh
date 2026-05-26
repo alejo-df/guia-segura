@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
-# build.sh - Script de construcción para Render
+# build.sh - Script de construccion para Render
 
-set -o errexit  # Salir si hay algún error
+set -o errexit
 
 pip install -r requirements.txt
-
-python manage.py collectstatic --no-input
-
 python manage.py migrate
+python manage.py collectstatic --noinput
