@@ -134,6 +134,13 @@
                             {% if log.ultimo_estado %}
                                 <br><span class="badge bg-info text-dark mt-1">Último estado: {{ log.ultimo_estado }}</span>
                             {% endif %}
+                            {% if log.consulta_id %}
+                            <button class="btn btn-sm btn-outline-secondary ms-1 py-0 px-1 btn-recorrido"
+                                    data-consulta="{{ log.consulta_id }}"
+                                    title="Ver recorrido completo">
+                                <i class="fas fa-ellipsis-h"></i>
+                            </button>
+                            {% endif %}
                         {% else %}
                             {{ log.detalle|default:"Sin detalle" }}
                         {% endif %}
@@ -154,6 +161,30 @@
     {% else %}
         <div class="alert alert-warning">No hay registros de auditoría con los filtros seleccionados.</div>
     {% endif %}
+</div>
+
+<!-- ===== MODAL RECORRIDO DE GUÍA ===== -->
+<div class="modal fade" id="modalRecorrido" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-route me-2"></i>
+                    Recorrido de guía <span id="modalNumeroGuia" class="fw-bold"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2 text-muted">Cargando recorrido...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -177,5 +208,79 @@
     }
 
     changeAuditPage(0);
+
+    // Colores por estado
+    function colorEstado(estado) {
+        const e = (estado || "").toLowerCase();
+        if (e.includes("entregam") || e.includes("entregado")) return "success";
+        if (e.includes("transit") || e.includes("en camino") || e.includes("despacho")) return "primary";
+        if (e.includes("novedad") || e.includes("intento") || e.includes("fallido")) return "warning";
+        if (e.includes("devuelto") || e.includes("retorno")) return "danger";
+        return "secondary";
+    }
+
+    // Abrir modal con recorrido
+    document.addEventListener("click", function(e) {
+        const btn = e.target.closest(".btn-recorrido");
+        if (!btn) return;
+
+        const consultaId = btn.dataset.consulta;
+        const modal = new bootstrap.Modal(document.getElementById("modalRecorrido"));
+        document.getElementById("modalNumeroGuia").textContent = "";
+        document.getElementById("modalBody").innerHTML = `
+            <div class="text-center py-4">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-2 text-muted">Cargando recorrido...</p>
+            </div>`;
+        modal.show();
+
+        fetch(`/panel/guias/${consultaId}/ajax-eventos/`)
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById("modalNumeroGuia").textContent = data.numero_guia;
+
+                if (!data.eventos || data.eventos.length === 0) {
+                    document.getElementById("modalBody").innerHTML = `
+                        <div class="alert alert-info">No hay eventos registrados para esta guía.</div>`;
+                    return;
+                }
+
+                let html = `
+                    <p class="text-muted mb-3"><i class="fas fa-user me-1"></i> Consultado por <strong>${data.usuario}</strong></p>
+                    <div class="timeline">`;
+
+                data.eventos.forEach((ev, i) => {
+                    const esUltimo = i === data.eventos.length - 1;
+                    const color = colorEstado(ev.estado);
+                    const inactivo = !ev.activo ? ' opacity-50' : '';
+                    html += `
+                        <div class="timeline-item${inactivo} mb-3 d-flex gap-3">
+                            <div class="d-flex flex-column align-items-center">
+                                <div class="rounded-circle bg-${color} d-flex align-items-center justify-content-center text-white"
+                                     style="width:36px;height:36px;flex-shrink:0;">
+                                    <i class="fas ${esUltimo ? 'fa-map-marker-alt' : 'fa-circle'}" style="font-size:14px;"></i>
+                                </div>
+                                ${!esUltimo ? '<div style="width:2px;flex:1;background:#dee2e6;margin-top:4px;"></div>' : ''}
+                            </div>
+                            <div class="pb-3 flex-grow-1">
+                                <span class="badge bg-${color} mb-1">${ev.estado || 'Sin estado'}</span>
+                                ${!ev.activo ? '<span class="badge bg-secondary ms-1">Inactivo</span>' : ''}
+                                <div class="small text-muted">
+                                    ${ev.fecha ? '<i class="fas fa-calendar-alt me-1"></i>' + ev.fecha : ''}
+                                    ${ev.hora ? '<i class="fas fa-clock ms-2 me-1"></i>' + ev.hora : ''}
+                                </div>
+                                ${ev.sucursal ? `<div class="small"><i class="fas fa-map-pin me-1 text-muted"></i>${ev.sucursal}</div>` : ''}
+                            </div>
+                        </div>`;
+                });
+
+                html += `</div>`;
+                document.getElementById("modalBody").innerHTML = html;
+            })
+            .catch(() => {
+                document.getElementById("modalBody").innerHTML = `
+                    <div class="alert alert-danger">Error al cargar el recorrido. Intenta de nuevo.</div>`;
+            });
+    });
 </script>
 {% endblock %}

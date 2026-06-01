@@ -33,7 +33,7 @@ from django.contrib.auth.decorators import user_passes_test
 #excel
 import openpyxl
 from openpyxl.styles import Font
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.core.mail import EmailMessage
 from io import BytesIO
 from django.conf import settings
@@ -980,11 +980,20 @@ def panel_auditoria_usuarios(request):
     logs_procesados = []
     for log in logs[:300]:
         ultimo_estado = ""
+        consulta_id = None
         if log.numero_guia and "Último estado:" in (log.detalle or ""):
             partes = log.detalle.split("Último estado:")
             if len(partes) > 1:
                 ultimo_estado = partes[1].strip().rstrip(".")
+        # Extraer consulta_id del detalle si existe
+        if log.numero_guia and "Consulta ID" in (log.detalle or ""):
+            try:
+                parte = log.detalle.split("Consulta ID")[1].split(".")[0].strip()
+                consulta_id = int(parte)
+            except Exception:
+                consulta_id = None
         log.ultimo_estado = ultimo_estado
+        log.consulta_id = consulta_id
         logs_procesados.append(log)
 
     return render(request, "users/panel_auditoria_usuarios.html", {
@@ -1165,4 +1174,27 @@ def mis_notificaciones(request):
     ).order_by("-fecha")[:50]
     return render(request, "users/mis_notificaciones.html", {
         "notificaciones": notificaciones,
+    })
+
+# ====================================================================
+# 🔍 AJAX: EVENTOS DE GUÍA PARA MODAL EN AUDITORÍA
+# ====================================================================
+@user_passes_test(es_admin)
+def ajax_eventos_guia(request, consulta_id):
+    eventos = (
+        HistorialGuia.objects
+        .filter(consulta_id=consulta_id)
+        .order_by('id')
+        .values('fecha', 'hora', 'estado', 'sucursal', 'activo')
+    )
+    data = list(eventos)
+    # Obtener número de guía
+    primera = HistorialGuia.objects.filter(consulta_id=consulta_id).first()
+    numero_guia = primera.numero_guia if primera else ""
+    usuario = primera.usuario.username if primera and primera.usuario else "Desconocido"
+    return JsonResponse({
+        "consulta_id": consulta_id,
+        "numero_guia": numero_guia,
+        "usuario": usuario,
+        "eventos": data,
     })

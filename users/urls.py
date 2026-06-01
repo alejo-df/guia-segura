@@ -49,6 +49,7 @@ urlpatterns = [
     path('panel/logs/notificaciones/', views.panel_notificaciones, name='panel_notificaciones'),
     path('panel/logs/intentos/', views.panel_intentos_login, name='panel_intentos_login'),
     path('panel/logs/auditoria/', views.panel_auditoria_usuarios, name='panel_auditoria_usuarios'),
+    path('panel/guias/<int:consulta_id>/ajax-eventos/', views.ajax_eventos_guia, name='ajax_eventos_guia'),
     path('panel/logs/intentos/desbloquear/<int:intento_id>/', views.desbloquear_cuenta, name='desbloquear_cuenta'),
     # --- USUARIO NORMAL ---
     path('mis-guias/excel/', views.mis_guias_excel, name='mis_guias_excel'),
