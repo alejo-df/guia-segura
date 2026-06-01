@@ -280,9 +280,13 @@ class VistaRegistro(View):
     initial = {'key': 'value'}
     template_name = 'users/register.html'
 
+    SUPERUSUARIO_PERMITIDO = "ADMIN12"
+
     def dispatch(self, request, *args, **kwargs):
-        if request.user.is_authenticated:
-            return redirect('/')
+        # Solo el superusuario ADMIN12 puede registrar nuevos usuarios
+        if not (request.user.is_authenticated and request.user.is_superuser and request.user.username == self.SUPERUSUARIO_PERMITIDO):
+            messages.error(request, "Solo el superusuario autorizado puede registrar nuevos usuarios.")
+            return redirect("login")
         return super().dispatch(request, *args, **kwargs)
 
     def get(self, request):
@@ -972,8 +976,19 @@ def panel_auditoria_usuarios(request):
     criterios = AuditoriaUsuario.objects.values_list("criterio", flat=True).distinct().order_by("criterio")
     acciones = AuditoriaUsuario.objects.values_list("accion", flat=True).distinct().order_by("accion")
 
+    # Extraer "Último estado:" del campo detalle para mostrarlo en la tabla
+    logs_procesados = []
+    for log in logs[:300]:
+        ultimo_estado = ""
+        if log.numero_guia and "Último estado:" in (log.detalle or ""):
+            partes = log.detalle.split("Último estado:")
+            if len(partes) > 1:
+                ultimo_estado = partes[1].strip().rstrip(".")
+        log.ultimo_estado = ultimo_estado
+        logs_procesados.append(log)
+
     return render(request, "users/panel_auditoria_usuarios.html", {
-        "logs": logs[:300],
+        "logs": logs_procesados,
         "criterios": criterios,
         "acciones": acciones,
         "filtros": {

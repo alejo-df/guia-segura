@@ -5,8 +5,8 @@
     <div class="page-hero">
         <div class="d-flex flex-column flex-xl-row justify-content-between gap-3 align-items-xl-end">
             <div>
-                <h1 class="fw-bold mb-2"><i class="fas fa-clipboard-list me-2"></i>Registro de Usuarios</h1>
-                <p>Auditoría de usabilidad con usuario, fecha, hora, criterio, acción, resultado, detalle, IP y número de guía cuando aplica.</p>
+                <h1 class="fw-bold mb-2"><i class="fas fa-clipboard-list me-2"></i>Historial de Usuarios</h1>
+                <p>Auditoría de usabilidad con usuario, fecha, hora, criterio, acción, resultado, detalle y número de guía cuando aplica.</p>
             </div>
             <div class="d-flex gap-2 flex-wrap position-relative" style="z-index: 2;">
                 <a href="{% url 'panel_usuarios' %}" class="btn btn-outline-dark">
@@ -24,7 +24,7 @@
 
     <div class="alert alert-info shadow-sm">
         <i class="fas fa-info-circle"></i>
-        Aquí se muestra la auditoría de usabilidad: quién hizo una acción, fecha y hora, criterio, resultado, detalle y número de guía cuando aplica.
+        Aquí se muestra el historial de usabilidad: quién hizo una acción, fecha y hora, criterio, resultado, detalle y número de guía cuando aplica.
     </div>
 
     <form method="get" class="panel-card p-3 p-lg-4 mb-4">
@@ -101,7 +101,6 @@
                     <th>Número de guía</th>
                     <th>Resultado</th>
                     <th>Detalle</th>
-                    <th>IP</th>
                 </tr>
             </thead>
             <tbody>
@@ -129,8 +128,16 @@
                             <span class="badge bg-dark">Error</span>
                         {% endif %}
                     </td>
-                    <td style="min-width: 280px;">{{ log.detalle|default:"Sin detalle" }}</td>
-                    <td>{{ log.ip|default:"-" }}</td>
+                    <td style="min-width: 280px;">
+                        {% if log.numero_guia %}
+                            El usuario <strong>{{ log.username|default:"Anónimo" }}</strong> buscó la guía <strong>{{ log.numero_guia }}</strong>.
+                            {% if log.ultimo_estado %}
+                                <br><span class="badge bg-info text-dark mt-1">Último estado: {{ log.ultimo_estado }}</span>
+                            {% endif %}
+                        {% else %}
+                            {{ log.detalle|default:"Sin detalle" }}
+                        {% endif %}
+                    </td>
                 </tr>
             {% endfor %}
             </tbody>
