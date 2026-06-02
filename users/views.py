@@ -8,7 +8,7 @@ from django.contrib.messages.views import SuccessMessageMixin
 from django.views import View
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import logout as django_logout
-from django.db import models, transaction, connection
+from django.db import models
 from django.db.models import Q
 import requests as req
 import uuid
@@ -104,68 +104,6 @@ def nombre_rol(usuario):
     return "Normal"
 
 
-def cambiar_id_usuario_en_bd(usuario, nuevo_id):
-    """Cambia el ID primario del usuario y mantiene sus registros relacionados.
-
-    Se hace con SQL directo porque el ID de django.contrib.auth.models.User
-    es llave primaria y varias tablas dependen de ese valor.
-    """
-    id_anterior = usuario.id
-    if nuevo_id == id_anterior:
-        return 0
-
-    tablas_relacionadas = [
-        (Perfil._meta.db_table, "user_id"),
-        (HistorialGuia._meta.db_table, "usuario_id"),
-        (IntentoLogin._meta.db_table, "usuario_id"),
-        (AuditoriaUsuario._meta.db_table, "usuario_id"),
-        ("auth_user_groups", "user_id"),
-        ("auth_user_user_permissions", "user_id"),
-    ]
-
-    quote = connection.ops.quote_name
-
-    def ejecutar_actualizacion():
-        actualizados = 0
-        with connection.cursor() as cursor:
-            if connection.vendor == "postgresql":
-                cursor.execute("SET CONSTRAINTS ALL DEFERRED")
-
-            cursor.execute(
-                f"UPDATE {quote(User._meta.db_table)} SET {quote('id')} = %s WHERE {quote('id')} = %s",
-                [nuevo_id, id_anterior],
-            )
-
-            for tabla, columna in tablas_relacionadas:
-                cursor.execute(
-                    f"UPDATE {quote(tabla)} SET {quote(columna)} = %s WHERE {quote(columna)} = %s",
-                    [nuevo_id, id_anterior],
-                )
-                actualizados += cursor.rowcount
-
-            if connection.vendor == "postgresql":
-                cursor.execute(
-                    "SELECT setval(pg_get_serial_sequence(%s, %s), GREATEST((SELECT COALESCE(MAX(id), 1) FROM auth_user), 1), true)",
-                    [User._meta.db_table, "id"],
-                )
-            elif connection.vendor == "sqlite":
-                cursor.execute(
-                    "UPDATE sqlite_sequence SET seq = (SELECT COALESCE(MAX(id), 0) FROM auth_user) WHERE name = %s",
-                    [User._meta.db_table],
-                )
-        return actualizados
-
-    if connection.vendor == "sqlite":
-        with connection.constraint_checks_disabled():
-            registros_actualizados = ejecutar_actualizacion()
-        connection.check_constraints()
-    else:
-        registros_actualizados = ejecutar_actualizacion()
-
-    usuario.id = nuevo_id
-    usuario.pk = nuevo_id
-    return registros_actualizados
-
 # ====================================================================
 # 🔥 PANEL DE USUARIOS
 # ====================================================================
@@ -224,40 +162,13 @@ def editar_usuario(request, user_id):
     if request.method == "POST":
         username_anterior = usuario.username
         email_anterior = usuario.email
-        id_anterior = usuario.id
-        nuevo_id_raw = request.POST.get("id", "").strip()
-
-        try:
-            nuevo_id = int(nuevo_id_raw)
-            if nuevo_id <= 0:
-                raise ValueError
-        except ValueError:
-            messages.error(request, "El ID del usuario debe ser un número entero positivo.")
-            return render(request, "users/editar_usuario.html", {"usuario": usuario})
-
-        if nuevo_id != id_anterior and User.objects.filter(id=nuevo_id).exists():
-            messages.error(request, f"Ya existe un usuario con el ID {nuevo_id}.")
-            return render(request, "users/editar_usuario.html", {"usuario": usuario})
-
         cambio_password = bool(request.POST["password"])
         usuario.username = request.POST["username"]
         usuario.email = request.POST["email"]
         if cambio_password:
             usuario.set_password(request.POST["password"])
-
-        try:
-            with transaction.atomic():
-                usuario.save()
-                registros_actualizados = cambiar_id_usuario_en_bd(usuario, nuevo_id)
-        except Exception as e:
-            messages.error(request, f"No se pudo actualizar el usuario: {e}")
-            return render(request, "users/editar_usuario.html", {"usuario": usuario})
-
-        detalle = f"Usuario editado. ID anterior: {id_anterior}. ID nuevo: {usuario.id}. Antes: {username_anterior} / {email_anterior}. Ahora: {usuario.username} / {usuario.email}."
-        if nuevo_id != id_anterior:
-            detalle += f" Se actualizaron {registros_actualizados} registros relacionados al nuevo ID."
-            if request.user.id == id_anterior:
-                request.session["_auth_user_id"] = str(nuevo_id)
+        usuario.save()
+        detalle = f"Usuario editado. Antes: {username_anterior} / {email_anterior}. Ahora: {usuario.username} / {usuario.email}."
         if cambio_password:
             detalle += " También se actualizó la contraseña."
         registrar_auditoria(
@@ -266,7 +177,7 @@ def editar_usuario(request, user_id):
             accion="Editó usuario",
             resultado="exitoso",
             detalle=detalle,
-            usuario=request.user if request.user.id != id_anterior else usuario,
+            usuario=request.user,
         )
         messages.success(request, "Usuario actualizado")
         return redirect("panel_usuarios")
