@@ -10,11 +10,16 @@
         <form method="POST" novalidate>
             {% csrf_token %}
             <div class="row g-3">
-                <div class="col-md-6">
+                <div class="col-md-4">
+                    <label class="form-label required-label" for="idInput">ID de usuario</label>
+                    <input id="idInput" type="number" min="1" step="1" class="form-control" name="id" value="{{ usuario.id }}" required>
+                    <div class="form-text">Al cambiarlo, también se actualizan las consultas y registros asociados a este usuario.</div>
+                </div>
+                <div class="col-md-4">
                     <label class="form-label required-label" for="usernameInput">Usuario</label>
                     <input id="usernameInput" class="form-control" name="username" value="{{ usuario.username }}" required>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <label class="form-label" for="emailInput">Correo electrónico</label>
                     <input id="emailInput" type="email" class="form-control" name="email" value="{{ usuario.email }}" placeholder="correo@ejemplo.com">
                 </div>
